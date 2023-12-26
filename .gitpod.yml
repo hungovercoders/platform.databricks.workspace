@@ -6,6 +6,7 @@ tasks:
     command: |
       sh ./cde/azure_sp.sh
       gp sync-done waitonazurecli
+      az --version
   - name: Azure Storage
     command: |
       gp sync-await waitonazurecli
@@ -16,8 +17,16 @@ tasks:
       gp sync-await waitonnstate
       sh ./cde/terraform.sh
       cd terraform
-
+      terraform --version
+  - name: Databricks
+    command: |
+      databricks -v
 
 vscode:
   extensions:
     - hashicorp.terraform
+    - databricks.databricks
+    - databricks.sqltools-databricks-driver
+    - mtxr.sqltools
+
+    
