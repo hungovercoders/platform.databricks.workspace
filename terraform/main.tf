@@ -1,32 +1,7 @@
-provider "azurerm" {
-  features {
-
-  }
-  # client_id       = var.client_id
-  # client_secret   = var.client_secret
-  # tenant_id       = var.tenant_id
-  # subscription_id = var.subscription_id
-}
-
-# resource "azurerm_databricks_workspace" "this" {
-#   location            = "northeurope"
-#   name                = "lrn-datagriff-dbwp-eun-dgrf"
-#   resource_group_name = "lrn-data-rg"
-#   sku                 = "premium"
-# }
-
-provider "databricks" {
-  host                        = "https://adb-4255314659407434.14.azuredatabricks.net"
-  azure_workspace_resource_id = "/subscriptions/829dab70-6cf8-487b-b8ca-ec74ab3ffbd8/resourceGroups/lrn-data-rg/providers/Microsoft.Databricks/workspaces/lrn-datagriff-dbwp-eun-dgrf"
-  # azure_client_id             = var.client_id
-  # azure_client_secret         = var.client_secret
-  # azure_tenant_id             = var.tenant_id
-}
-
 variable "cluster_name" {
   description = "A name for the cluster."
   type        = string
-  default     = "Griff Cluster"
+  default     = "griff_cluster"
 }
 
 variable "cluster_autotermination_minutes" {
@@ -53,11 +28,77 @@ data "databricks_spark_version" "latest_lts" {
   long_term_support = true
 }
 
+resource "databricks_cluster_policy" "team_policy" {
+  name = "team_policy"
+
+  definition = jsonencode({
+    "instance_pool_id" : {
+      "type" : "forbidden",
+      "hidden" : false
+    },
+    "spark_version" : {
+      "pattern" : ".+",
+      "type" : "regex"
+    },
+    "node_type_id" : {
+      "type" : "allowlist",
+      "values" : [
+        "Standard_F4s"
+      ],
+      "defaultValue" : "Standard_F4s"
+    },
+    "driver_node_type_id" : {
+      "type" : "fixed",
+      "value" : "Standard_F4s",
+      "hidden" : false
+    },
+    "autoscale.min_workers" : {
+      "type" : "fixed",
+      "value" : 1,
+      "hidden" : false
+    },
+    "autoscale.max_workers" : {
+      "type" : "range",
+      "maxValue" : 4,
+      "defaultValue" : 1
+    },
+    "autotermination_minutes" : {
+      "type" : "fixed",
+      "value" : 20,
+      "hidden" : false
+    },
+    "custom_tags.process" : {
+      "pattern" : ".+",
+      "type" : "regex"
+    }
+  })
+}
+
+
 resource "databricks_cluster" "this" {
   cluster_name            = var.cluster_name
+  depends_on              = [databricks_cluster_policy.team_policy]
   node_type_id            = data.databricks_node_type.smallest.id
   spark_version           = data.databricks_spark_version.latest_lts.id
   autotermination_minutes = var.cluster_autotermination_minutes
-  num_workers             = var.cluster_num_workers
-  is_pinned               = false
+  autoscale {
+    min_workers = var.cluster_num_workers
+    max_workers = var.cluster_num_workers
+  }
+  is_pinned = false
+  policy_id = databricks_cluster_policy.team_policy.id
+  custom_tags = {
+    "process" = "hungovercoders"
+  }
 }
+
+# resource "databricks_cluster" "example_cluster" {
+#   cluster_name            = var.cluster_name
+#   node_type_id            = data.databricks_node_type.smallest.id
+#   spark_version           = data.databricks_spark_version.latest_lts.id
+#   autotermination_minutes = var.cluster_autotermination_minutes
+#   num_workers             = var.cluster_num_workers
+#   is_pinned               = false
+# }
+
+
