@@ -2,7 +2,7 @@ terraform {
 
 
   backend "azurerm" {
-    key = "template.azure.terraform.tfstate"
+    key = "platform.databricks.workspace.tfstate"
   }
 
   required_providers {
